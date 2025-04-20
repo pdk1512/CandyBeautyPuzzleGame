@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Candy Beauty Puzzle Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      z-index: 0;
+    }
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: url('./CandyBeauty.png') center/cover no-repeat;
+      z-index: -2;
+    }
+    body::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(106, 13, 173, 0.6); /* Soft purple overlay */
+      z-index: -1;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+    #controls {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    #controls button, #controls input[type="file"] {
+      background-color: #4B0082; /* Button purple */
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+      width: 200px; /* Ensure the buttons have equal width */
+    }
+    #controls button:hover, #controls input[type="file"]:hover {
+      background-color: #8a2be2; /* Lighter purple on hover */
+    }
+    #upload {
+      background: #4B0082; /* Button purple */
+      color: transparent;
+      padding: 10px;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+      width: 200px;
+    }
+    #puzzle {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 2px;
+      margin-top: 20px;
+    }
+    .tile {
+      width: 100px;
+      height: 100px;
+      background-size: 300px 300px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      transition: transform 0.2s ease;
+    }
+    .tile:hover {
+      transform: scale(1.1);
+    }
+    .empty {
+      background: #6a0dad; /* Purple background for empty piece */
+    }
+    #message {
+      margin-top: 15px;
+      font-size: 18px;
+      color: #16a34a;
+      font-weight: bold;
+    }
+    #upload::-webkit-file-upload-button {
+      visibility: hidden;
+    }
+    #upload::before {
+      content: 'Upload Image';
+      display: inline-block;
+      background-color: #4B0082;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #upload:hover::before {
+      background-color: #8a2be2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Candy Beauty Puzzle Game</h1>
+
+  <div id="controls">
+    <input style="display: none;" type="file" id="upload" accept="image/*">
+  </div>
+
+  <div id="puzzle"></div>
+  <div id="message"></div>
+
+  <div id="controls">
+    <button id="restart">Restart</button>
+    <button id="shuffle">Shuffle</button>
+  </div>
+
+  <script>
+    const upload = document.getElementById('upload');
+    const restartBtn = document.getElementById('restart');
+    const shuffleBtn = document.getElementById('shuffle');
+    const puzzle = document.getElementById('puzzle');
+    const message = document.getElementById('message');
+    let tiles = [];
+    let emptyIndex = 8;
+    let currentImageURL = './CandyBeauty.png'; // Default image URL
+
+    function createPuzzle(imageURL, shuffle = true) {
+      currentImageURL = imageURL;
+      puzzle.innerHTML = '';
+      tiles = [];
+      message.textContent = '';
+
+      const positions = [...Array(8).keys()]; // 0 to 7
+      if (shuffle) {
+        // Light shuffle to keep it easy
+        for (let i = 0; i < 5; i++) {
+          const rand = Math.floor(Math.random() * 7);
+          [positions[rand], positions[rand + 1]] = [positions[rand + 1], positions[rand]];
+        }
+      }
+      positions.push(8); // empty tile is the last one
+
+      for (let i = 0; i < 9; i++) {
+        const tile = document.createElement('div');
+        tile.classList.add('tile');
+
+        if (positions[i] === 8) {
+          tile.classList.add('empty');
+          tile.dataset.empty = 'true';
+          emptyIndex = i;
+        } else {
+          const pos = positions[i];
+          tile.style.backgroundImage = `url(${imageURL})`;
+          tile.dataset.correct = pos;
+          tile.dataset.current = pos;
+          tile.style.backgroundPosition = `-${(pos % 3) * 100}px -${Math.floor(pos / 3) * 100}px`;
+        }
+
+        puzzle.appendChild(tile);
+        tiles.push(tile);
+      }
+
+      updateListeners();
+    }
+
+    function updateListeners() {
+      tiles.forEach((tile, index) => {
+        tile.onclick = () => {
+          if (areAdjacent(index, emptyIndex)) {
+            swapTiles(index, emptyIndex);
+            checkVictory();
+          }
+        };
+      });
+    }
+
+    function areAdjacent(i1, i2) {
+      const row1 = Math.floor(i1 / 3), col1 = i1 % 3;
+      const row2 = Math.floor(i2 / 3), col2 = i2 % 3;
+      return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
+    }
+
+    function swapTiles(i, j) {
+      const tempNode = tiles[i].cloneNode(true);
+      puzzle.replaceChild(tempNode, tiles[j]);
+      puzzle.replaceChild(tiles[j], tiles[i]);
+      [tiles[i], tiles[j]] = [tiles[j], tempNode];
+
+      if (tiles[i].classList.contains('empty')) {
+        emptyIndex = i;
+      } else if (tiles[j].classList.contains('empty')) {
+        emptyIndex = j;
+      }
+
+      updateListeners();
+    }
+
+    function checkVictory() {
+      for (let i = 0; i < 8; i++) {
+        const row = Math.floor(i / 3);
+        const col = i % 3;
+        const bg = tiles[i].style.backgroundPosition;
+        const expected = `-${col * 100}px -${row * 100}px`;
+        if (bg !== expected || tiles[i].classList.contains('empty')) {
+          return;
+        }
+      }
+      if (tiles[8].classList.contains('empty')) {
+        message.textContent = "Kẹo xinh gái giỏi quó!";
+      }
+    }
+
+    upload.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        createPuzzle(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    restartBtn.addEventListener('click', () => {
+      if (currentImageURL) createPuzzle(currentImageURL, false);
+    });
+
+    shuffleBtn.addEventListener('click', () => {
+      if (currentImageURL) createPuzzle(currentImageURL);
+    });
+
+    document.addEventListener('keydown', e => {
+      const row = Math.floor(emptyIndex / 3);
+      const col = emptyIndex % 3;
+      let targetIndex = null;
+
+      switch (e.key) {
+        case 'ArrowUp':
+          if (row < 2) targetIndex = emptyIndex + 3;
+          break;
+        case 'ArrowDown':
+          if (row > 0) targetIndex = emptyIndex - 3;
+          break;
+        case 'ArrowLeft':
+          if (col < 2) targetIndex = emptyIndex + 1;
+          break;
+        case 'ArrowRight':
+          if (col > 0) targetIndex = emptyIndex - 1;
+          break;
+      }
+
+      if (targetIndex !== null) {
+        swapTiles(targetIndex, emptyIndex);
+        checkVictory();
+      }
+    });
+
+    // Initialize the game with the default image
+    createPuzzle(currentImageURL);
+  </script>
+</body>
+</html>
